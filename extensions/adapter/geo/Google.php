@@ -46,6 +46,24 @@ class Google extends Base {
 			}
 			$result = $raw = $data['results'][0];
 
+			// there are times when certain queries span 2 areas
+			// when this happens, google will return more than one result
+			// sometimes, vital information (like a zip code) will not be in
+			// the first result.
+			if (count($data['results']) > 1) {
+				$key = 'address_components';
+				foreach ($data['results'] as $result) {
+					if (empty($result[$key])) {
+						continue;
+					}
+					if (empty($raw[$key])) {
+						$raw[$key] = array();
+					}
+					$raw[$key] = array_merge($raw[$key], $result[$key]);
+				}
+			}
+
+
 			if (isset($raw['geometry']['bounds'])) {
 				$bounds = $raw['geometry']['bounds'];
 				$result += array(
