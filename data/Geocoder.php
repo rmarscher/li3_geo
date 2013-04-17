@@ -13,6 +13,8 @@ use lithium\core\Libraries;
 use lithium\core\Environment;
 use UnexpectedValueException;
 use lithium\core\ConfigException;
+use Exception;
+
 
 /**
  * The `Geocoder` class handles all geocoding, coordinate calculation, and formula-generation
@@ -243,9 +245,6 @@ class Geocoder extends \lithium\core\Adaptable {
 			$adapter  = $self::adapter($name);
 
 			list($scheme, $host) = explode('://', $adapter->service('host'), 2);
-			$connection = $self::invokeMethod('_instance', array(
-				'service', compact('scheme', 'host')
-			));
 			$service = null;
 
 			switch (true) {
@@ -259,7 +258,21 @@ class Geocoder extends \lithium\core\Adaptable {
 			if (!$service) {
 				return;
 			}
-			return $self::adapter($name)->query($connection, $service, $location);
+			$connection = $queryArgs = false;
+			$connectionRetry = 0;
+			// third times a charm....
+			while (!$queryArgs && $connectionRetry < 3) {
+				$connection = $self::invokeMethod('_instance', array(
+					'service', compact('scheme', 'host')
+				));
+				$queryArgs = $self::adapter($name)->query($connection, $service, $location);
+				$connectionRetry++;
+			}
+			if (!$queryArgs) {
+				throw new Exception('Cannot get a successful query result');
+				return false;
+			}
+			return $queryArgs;
 		});
 	}
 
